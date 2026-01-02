@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ page_title }}</h1>
+
+{% if show_created_date %}
+<p class="page-date">
+  <i>
+    <time datetime="{{ created_iso }}">
+      {{ created_human }}
+    </time>
+  </i>
+</p>
+{% endif %}
+
+<main>
+  {{ body | safe }}
+</main>
+
+<hr />
+
+{% if updated_iso != created_iso %}
+<p class="page-date">
+  <i>
+    Last updated:
+    <time datetime="{{ updated_iso }}">
+      {{ updated_human }}
+    </time>
+  </i>
+</p>
+{% endif %}
+{% endblock %}

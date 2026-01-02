@@ -1,0 +1,36 @@
+[project]
+name = "soggy"
+version = "0.1.0"
+description = "Generate a static site from an obsidian vault"
+requires-python = ">=3.14"
+dependencies = [
+  "jinja2>=3.1.6",
+  "mistune>=3.2.0",
+  "pyyaml>=6.0",
+  "tqdm>=4.67.1",
+  "minify-html>=0.18.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.6.0",
+  "pyrefly>=0.46.2",
+  "ty>=0.0.8",
+  "pytest>=8.4.1",
+]
+
+[project.scripts]
+generate = "soggy.cli:main"
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.mypy]
+python_version = "3.14"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+
+[build-system]
+requires = ["flit_core>=3.12,<4"]
+build-backend = "flit_core.buildapi"
