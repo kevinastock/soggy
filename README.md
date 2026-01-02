@@ -1,2 +1,3 @@
 # soggy
-Static site generator for Obsidian
+
+A static site generator for Obsidian. Renders my Obsidian vault to the website seen at [kevinstock.org](https://kevinstock.org).
