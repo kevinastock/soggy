@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from tests.conftest import WriteMarkdown
 from soggy import cli
 from soggy.minify import minify_css_text
@@ -97,3 +99,53 @@ def test_cli_preserves_asset_filenames_with_spaces(
         "href=/Website/Name%20Smile.otf" in font_html
         or 'href="/Website/Name%20Smile.otf"' in font_html
     )
+
+
+def test_cli_overwrite_preserves_ignored_output_files(
+    tmp_path: Path, write_markdown: WriteMarkdown
+) -> None:
+    vault_root = tmp_path / "vault"
+    output_root = tmp_path / "site"
+    vault_root.mkdir()
+    output_root.mkdir()
+
+    preserved_path = output_root / "CNAME"
+    preserved_path.write_text("keep", encoding="utf-8")
+    removed_path = output_root / "old.txt"
+    removed_path.write_text("remove", encoding="utf-8")
+
+    write_markdown(
+        vault_root,
+        "notes/My Post.md",
+        "# Title\n",
+        {
+            "publish": True,
+            "date created": "2024-01-02",
+            "date modified": "2024-01-03",
+        },
+    )
+
+    cli.build_site(
+        vault_root,
+        output_root,
+        overwrite=True,
+        ignore_output=["CNAME"],
+        site_title="Test Site",
+    )
+
+    assert preserved_path.read_text(encoding="utf-8") == "keep"
+    assert not removed_path.exists()
+
+
+def test_cli_rejects_nested_ignore_output_paths(tmp_path: Path) -> None:
+    output_root = tmp_path / "site"
+    output_root.mkdir()
+
+    with pytest.raises(ValueError, match="top-level"):
+        cli.build_site(
+            tmp_path / "vault",
+            output_root,
+            overwrite=True,
+            ignore_output=["foo/bar"],
+            site_title="Test Site",
+        )

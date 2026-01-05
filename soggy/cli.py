@@ -49,6 +49,16 @@ def _parse_args() -> argparse.Namespace:
         help="Allow deleting an existing output directory before running.",
     )
     parser.add_argument(
+        "--ignore-output",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help=(
+            "Top-level relative path under the output directory to preserve when "
+            "overwriting. Repeatable."
+        ),
+    )
+    parser.add_argument(
         "--site-title",
         default=DEFAULT_SITE_TITLE,
         help="Title to use for the generated site.",
@@ -75,15 +85,37 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _clear_directory(output_dir: Path) -> None:
+def _normalize_ignore_output_paths(
+    output_dir: Path, ignore_output: list[str]
+) -> list[Path]:
+    output_root = output_dir.resolve(strict=False)
+    normalized: list[Path] = []
+    for raw in ignore_output:
+        resolved = (output_root / Path(raw)).resolve(strict=False)
+        if resolved.parent != output_root:
+            raise ValueError(
+                "Ignore output path must be a top-level entry within "
+                f"{output_dir.as_posix()}: {raw}"
+            )
+        normalized.append(resolved)
+    return normalized
+
+
+def _clear_directory(output_dir: Path, ignore_output: list[str]) -> None:
+    ignore_paths = _normalize_ignore_output_paths(output_dir, ignore_output)
+    ignore_set = {path.resolve(strict=False) for path in ignore_paths}
     for item in output_dir.iterdir():
+        if item.resolve(strict=False) in ignore_set:
+            continue
         if item.is_dir() and not item.is_symlink():
             shutil.rmtree(item)
         else:
             item.unlink()
 
 
-def _prepare_output_dir(output_dir: Path, overwrite: bool) -> None:
+def _prepare_output_dir(
+    output_dir: Path, overwrite: bool, ignore_output: list[str]
+) -> None:
     if output_dir.exists():
         if not overwrite:
             raise FileExistsError(
@@ -93,7 +125,7 @@ def _prepare_output_dir(output_dir: Path, overwrite: bool) -> None:
             raise NotADirectoryError(
                 f"Output path exists but is not a directory: {output_dir}"
             )
-        _clear_directory(output_dir)
+        _clear_directory(output_dir, ignore_output)
     output_dir.mkdir(parents=True, exist_ok=True)
     _LOGGER.info("Prepared output directory: %s", output_dir.as_posix())
 
@@ -158,10 +190,13 @@ def build_site(
     output_dir: Path,
     *,
     overwrite: bool = False,
+    ignore_output: list[str] | None = None,
     site_title: str = DEFAULT_SITE_TITLE,
 ) -> None:
+    if ignore_output is None:
+        ignore_output = []
     _validate_output_dir(input_dir, output_dir)
-    _prepare_output_dir(output_dir, overwrite)
+    _prepare_output_dir(output_dir, overwrite, ignore_output)
     _LOGGER.info(
         "Building site from %s to %s",
         input_dir.as_posix(),
@@ -190,6 +225,7 @@ def main() -> None:
             args.input_dir,
             args.output_dir,
             overwrite=args.overwrite,
+            ignore_output=args.ignore_output,
             site_title=args.site_title,
         )
     except (FileExistsError, NotADirectoryError) as exc:
